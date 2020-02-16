@@ -1,0 +1,19 @@
+version: '3'
+services:
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    tty: true
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+  python:
+    build: .
+    ports:
+      - 3000:3000
+    depends_on:
+      - rabbitmq 
+
+# networks:
+#   default:
+#     external:
+#       name: microservicenetwork
