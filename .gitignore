@@ -1,3 +1,4 @@
 server/.vscode
 env
 server/env
+.vscode

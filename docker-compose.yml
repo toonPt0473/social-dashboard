@@ -6,14 +6,23 @@ services:
     ports:
       - "15672:15672"
       - "5672:5672"
-  python:
-    build: .
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     ports:
       - 3000:3000
     depends_on:
       - rabbitmq 
 
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq 
+    
 # networks:
 #   default:
 #     external:
-#       name: microservicenetwork
+#       name: myapp_default
