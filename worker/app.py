@@ -1,37 +1,21 @@
 import pika
 import time
+import logging
+import time
+logging.basicConfig()
 
-connection = pika.BlockingConnection(
-  pika.ConnectionParameters(host='localhost'))
-
+time.sleep(10)
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
 channel = connection.channel()
 
-channel.queue_declare(queue='rpc_queue')
+channel.queue_declare(queue='hello')
 
-def fib(n):
-  time.sleep(3)
-  if n == 0:
-    return 0
-  elif n == 1:
-    return 1
-  else:
-    return fib(n - 1) + fib(n - 2)
 
-def on_request(ch, method, props, body):
-  n = int(body)
+def callback(ch, method, properties, body):
+  print(" [x] Received %r" % body)
 
-  print(" [.] fib(%s)" % n)
-  response = fib(n)
+channel.basic_consume(
+  queue='hello', on_message_callback=callback, auto_ack=True)
 
-  ch.basic_publish(exchange='',
-    routing_key=props.reply_to,
-    properties=pika.BasicProperties(correlation_id = \
-                                        props.correlation_id),
-    body=str(response))
-  ch.basic_ack(delivery_tag=method.delivery_tag)
-
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)
-
-print(" [x] Awaiting RPC requests")
+print(' [*] Waiting for messages. To exit press CTRL+C')
 channel.start_consuming()
