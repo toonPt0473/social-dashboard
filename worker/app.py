@@ -5,8 +5,10 @@ import pandas as pd
 import re
 import os
 from datetime import datetime
+from downloadfile import download_file_from_google_drive
+from send_result import send_analyze_result
 
-time.sleep(10)
+# time.sleep(10)
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
 
@@ -61,8 +63,28 @@ def generate_dataframe_from_file(filename):
 
 
 def callback(ch, method, properties, body):
-  filename = 'rawdata.csv'
-  csv = generate_dataframe_from_file(filename)
+  body = json.loads(body)
+  print(body['g_drive_id'])
+  try:
+    if (os.path.exists('raw.csv')):
+      os.remove("raw.csv")
+    destination = 'raw.csv'
+    download_file_from_google_drive(body['g_drive_id'], destination)
+    print('download file success')
+  except:
+    data = {
+      'label': body['label'],
+      'data': {
+        'pending': False,
+        'error': True,
+        'error_message': 'load file fail'
+      }
+    }
+    send_analyze_result(data)
+    return
+  # csv = generate_dataframe_from_file(destination)
+  # send_analyze_result({})
+  return 
 
 
 channel.basic_consume(

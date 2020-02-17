@@ -2,3 +2,4 @@ server/.vscode
 env
 server/env
 .vscode
+raw.csv
