@@ -7,9 +7,12 @@ import os
 from datetime import datetime
 from downloadfile import download_file_from_google_drive
 from send_result import send_analyze_result
+import logging
 
-# time.sleep(10)
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+logger = logging.Logger('catch_all')
+
+time.sleep(10)
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
 channel = connection.channel()
 
 channel.queue_declare(queue='addNewCsv')
@@ -58,8 +61,7 @@ def generate_dataframe_from_file(filename):
   f.write(contents)
   f.close()
   print('end')
-  csv = pd.read_csv('newdata.csv', error_bad_lines=False)
-  return csv
+  return 
 
 
 def callback(ch, method, properties, body):
@@ -71,7 +73,8 @@ def callback(ch, method, properties, body):
     destination = 'raw.csv'
     download_file_from_google_drive(body['g_drive_id'], destination)
     print('download file success')
-  except:
+  except Exception as e:
+    logger.error(str(e))
     data = {
       'label': body['label'],
       'data': {
@@ -82,14 +85,60 @@ def callback(ch, method, properties, body):
     }
     send_analyze_result(data)
     return
-  # csv = generate_dataframe_from_file(destination)
-  # send_analyze_result({})
+  try:
+    generate_dataframe_from_file(destination)
+    csv = pd.read_csv('newdata.csv', error_bad_lines=False)
+    # test 1
+    date_df = pd.DataFrame()
+    date_df['time'] = pd.to_datetime(csv['time']).dt.date
+    date_df = pd.DataFrame(date_df.groupby(['time']).size()).reset_index()
+    date_df = date_df.rename(columns={0 : 'date_count'})
+    date_df = date_df.values.tolist()
+    def myconverter(o):
+      return o.__str__()
+    daily_message = json.dumps(date_df, default = myconverter)
+
+    # test 2
+    top_messages_engagements = pd.DataFrame.from_records(data=csv, columns=['message', 'engagement'])
+    top_messages_engagements = top_messages_engagements.sort_values(by='engagement', ascending=False)
+    top_messages_engagements = top_messages_engagements.values.tolist()
+    top_messages_engagements = top_messages_engagements[:10]
+
+    # test 3
+    top_accounts = pd.DataFrame.from_records(data=csv, columns=['owner id', 'owner name'])
+    top_accounts = pd.DataFrame(top_accounts.groupby(['owner id', 'owner name']).size()).reset_index()
+    top_accounts = top_accounts.rename(columns={0 : 'id_count'})
+    top_accounts = top_accounts.sort_values(by='id_count', ascending=False)
+    top_accounts = top_accounts.values.tolist()
+    top_accounts = top_accounts[:10]
+    data = {
+      'label': body['label'],
+      'data': {
+        'pending': False,
+        'data': {
+          'daily_message': daily_message,
+          'top_messages_engagements': top_messages_engagements,
+          'top_accounts': top_accounts
+        }
+      }
+    }
+    send_analyze_result(data)
+  except Exception as e:
+    logger.error(str(e))
+    data = {
+      'label': body['label'],
+      'data': {
+        'pending': False,
+        'error': True,
+        'error_message': 'maybe csv is wrong format or file not found'
+      }
+    }
+    send_analyze_result(data)
+    return
   return 
 
 
-channel.basic_consume(
-  queue='addNewCsv', on_message_callback=callback, auto_ack=True)
-
+channel.basic_consume(queue='addNewCsv', on_message_callback=callback, auto_ack=True)
 print(' [*] Waiting for messages. To exit press CTRL+C')
-channel.start_consuming()
 
+channel.start_consuming()

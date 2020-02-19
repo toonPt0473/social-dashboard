@@ -12,17 +12,17 @@ class Controller(Resource):
     f.close()
     analyze_data[body['label'] + str(round(time.time() * 1000))] = {
       'pending': True,
-      'label': body['label'],
+      'title': body['label'],
       'g_drive_id': body['g_drive_id']
     }
-    f = open("analyze_data.json", "w")
-    f.write(json.dumps(analyze_data))
+    with open('analyze_data.json', 'w', encoding='utf8') as json_file:
+      json.dump(analyze_data, json_file, ensure_ascii=False)
     send_data = json.dumps({
       'label': body['label'] + str(round(time.time() * 1000)),
       'g_drive_id': body['g_drive_id']
     })
-
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    print(send_data)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='addNewCsv')
     channel.basic_publish(exchange='', routing_key='addNewCsv', body=send_data)
