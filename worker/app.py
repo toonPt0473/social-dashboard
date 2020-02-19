@@ -12,7 +12,7 @@ import logging
 logger = logging.Logger('catch_all')
 
 time.sleep(10)
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', heartbeat=0))
 channel = connection.channel()
 
 channel.queue_declare(queue='addNewCsv')
