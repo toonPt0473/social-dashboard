@@ -26,7 +26,7 @@ const Home = () => {
     const result = await axios.get(`${env.SERVER_API_URL}/analyze`)
     const data = Object.entries(result.data).map(([key, value]) => {
       const dataformat = {
-        detail: value.pending ? 'processing data' : value.data ? 'sumalyze' : value.error_message,
+        detail: value.pending ? 'processing data' : value.data ? 'summarize' : value.error_message,
         title: value.title,
         status: value.pending ? <Spin indicator={antIcon} /> : value.error ? 'Fail' : 'Success',
         g_drive_id: value.g_drive_id
@@ -58,8 +58,8 @@ const Home = () => {
     Header: 'Detail',
     accessor: 'detail',
     Cell: props => {
-      if (props.value === 'sumalyze') {
-        return <Button onClick={() => onClickShowData(props.original.data)}>Sumalyze</Button>
+      if (props.value === 'summarize') {
+        return <Button onClick={() => onClickShowData(props.original.data)}>Summarize</Button>
       }
       return <span className='number'>{props.value}</span>
     }
